@@ -1,5 +1,11 @@
 # Telemetry Service
 
+<p align="center">
+  <a href="./README.md">English</a> •
+  <a href="./README_ru.md">Русский</a>
+</p>
+
+---
 RESTful API service to collect telemetry data from devices and asynchronously process analytics.
 
 ## Technology Stack
