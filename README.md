@@ -1,12 +1,14 @@
 # Telemetry Service
 
-<p align="center">
-  <a href="./README.md">English</a> •
-  <a href="./README_ru.md">Русский</a>
-</p>
+[Русская версия (Russian)](README_ru.md)
 
----
 RESTful API service to collect telemetry data from devices and asynchronously process analytics.
+
+## Key Features
+- **Full JWT Authentication:** Access and Refresh tokens for secure sessions.
+- **UUID Identifiers:** Devices use industry-standard UUIDs instead of simple integers.
+- **Async Analytics:** Heavy metric calculations performed in the background using Celery and Redis.
+- **Paginated Data:** High-performance telemetry retrieval with limit/skip and time filtering.
 
 ## Technology Stack
 - **Framework:** FastAPI
@@ -17,15 +19,22 @@ RESTful API service to collect telemetry data from devices and asynchronously pr
 
 ## Project Structure
 - `app/`: Main application code
-  - `main.py`: FastAPI entry point
-  - `models.py`: SQLAlchemy database models
-  - `schemas.py`: Pydantic data schemas
-  - `crud.py`: Database operations
-  - `worker.py`: Celery tasks and configuration
-  - `routers/`: API endpoints grouped by resource
-- `alembic/`: Database migrations
-- `Dockerfile` & `docker-compose.yml`: Containerization
-- `locustfile.py`: Load testing script
+  - `main.py`: FastAPI entry point and router integration.
+  - `models.py`: SQLAlchemy database models (PostgreSQL).
+  - `schemas.py`: Pydantic data schemas (DTO pattern).
+  - `crud.py`: Database operations (Create, Read, Update, Delete).
+  - `worker.py`: Celery tasks and background configuration.
+  - `config.py`: Application settings and environment variables management.
+  - `database.py`: DB engine setup and session management.
+  - `deps.py`: FastAPI dependencies (JWT authentication).
+  - `security.py`: Security utilities (JWT creation, password hashing).
+  - `routers/`: API endpoints grouped by resource (Users, Devices, etc.).
+- `alembic/`: Database migration scripts and environment.
+- `alembic.ini`: Configuration for Alembic migrations.
+- `Dockerfile` & `docker-compose.yml`: Docker orchestration and container setup.
+- `pyproject.toml` & `poetry.lock`: Python dependencies and project metadata.
+- `locustfile.py`: Load testing scenario script.
+- `locust_report.html`: Detailed HTML report of the latest load test.
 
 ## How to Run
 
@@ -44,10 +53,11 @@ RESTful API service to collect telemetry data from devices and asynchronously pr
    poetry install
    ```
 2. Set up PostgreSQL and Redis.
-3. Configure environment variables (create a `.env` file or export them):
+3. Configure environment variables (export them or set in your environment). 
+   **Note:** For production deployment, it is highly recommended to move all sensitive data (passwords, secret keys) to a `.env` file and exclude it from version control.
    ```
-   DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
-   SYNC_DATABASE_URL=postgresql://user:pass@localhost/db
+   DATABASE_URL=postgresql+asyncpg://user:pass@localhost/telemetry
+   SYNC_DATABASE_URL=postgresql://user:pass@localhost/telemetry
    REDIS_URL=redis://localhost:6379/0
    ```
 4. Run migrations:
@@ -56,7 +66,7 @@ RESTful API service to collect telemetry data from devices and asynchronously pr
    ```
 5. Start the FastAPI server:
    ```bash
-   poetry run uvicorn app.main:app --reload
+   poetry run uvicorn app.main:app --reload --port 8080
    ```
 6. Start the Celery worker:
    ```bash
@@ -65,23 +75,26 @@ RESTful API service to collect telemetry data from devices and asynchronously pr
 
 ## API Endpoints
 
-### Users & Devices
-- `POST /users/`: Create a new user.
-- `POST /devices/`: Register a device and bind it to a user.
+### Users & Auth
+- `POST /users/`: Register a new user.
+- `POST /users/login`: Get Access and Refresh tokens.
+- `POST /users/refresh`: Renew Access token using Refresh token.
+
+### Devices
+- `GET /devices/`: List all devices for the current user.
+- `POST /devices/`: Register a new device (UUID generated automatically).
 
 ### Telemetry Collection
+- `GET /telemetry/{device_id}`: Retrieve history with pagination and time filters.
 - `POST /telemetry/{device_id}`: Receive telemetry data (`x`, `y`, `z`).
 
 ### Analytics
-- `POST /analytics/device/{device_id}`: Trigger analysis for a specific device (optional `start_time`, `end_time`). Returns `task_id`.
-- `POST /analytics/user/{user_id}`: Trigger analysis for all devices of a user. Returns `task_id`.
-- `GET /analytics/task/{task_id}`: Check task status and get results (min, max, count, sum, median).
+- `POST /analytics/device/{device_id}`: Trigger device analysis. Returns `task_id`.
+- `POST /analytics/user/{user_id}`: Trigger analysis for all user's devices.
+- `GET /analytics/task/{task_id}`: Check status and get results (min, max, median, etc.).
 
 ## Load Testing
-To run load tests with Locust:
-1. Ensure the service is running.
-2. Start Locust:
-   ```bash
-   poetry run locust
-   ```
-3. Open `http://localhost:8089` in your browser and start the test.
+Results are saved in `locust_report.html`. To run manually:
+1. Start the service.
+2. Run `poetry run locust`.
+3. Open `http://localhost:8089`.
